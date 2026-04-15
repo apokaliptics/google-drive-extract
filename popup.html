@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Drive PDF Extractor</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main class="panel">
+      <header class="panel-header">
+        <img src="icons/icon48.png" alt="Drive PDF Extractor" class="logo" />
+        <div>
+          <h1>Drive PDF Extractor</h1>
+          <p>One-click scan and download for Drive PDFs.</p>
+        </div>
+      </header>
+
+      <section class="status-card" id="statusCard" aria-live="polite">
+        <p class="status-label" id="statusLabel">Ready</p>
+        <p class="status-detail" id="statusDetail">
+          Open a Google Drive PDF in this tab, then press Extract.
+        </p>
+        <div class="progress-track" aria-hidden="true">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+      </section>
+
+      <button id="extractBtn" class="extract-btn" type="button">Extract</button>
+
+      <p class="hint" id="hintText">
+        Keep the Drive tab open while extraction runs.
+      </p>
+    </main>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

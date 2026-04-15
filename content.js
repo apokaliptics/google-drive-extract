@@ -31,8 +31,37 @@
 
   // ── State ───────────────────────────────────────────────────
   let isRunning = false;
+  const extractionStatus = {
+    state: "idle",
+    message: "Ready to extract",
+    detail: "Open a Google Drive PDF and press Extract.",
+    progress: 0,
+    pagesFound: 0,
+    updatedAt: Date.now(),
+  };
 
   // ── Helpers ─────────────────────────────────────────────────
+
+  function getExtractionStatus() {
+    return { ...extractionStatus };
+  }
+
+  function broadcastExtractionStatus() {
+    if (!chrome?.runtime?.sendMessage) return;
+    try {
+      chrome.runtime.sendMessage({
+        type: "DRIVE_PDF_EXTRACT_STATUS_CHANGED",
+        status: getExtractionStatus(),
+      });
+    } catch (_) {
+      // Ignore when no extension context is listening.
+    }
+  }
+
+  function updateExtractionStatus(next) {
+    Object.assign(extractionStatus, next, { updatedAt: Date.now() });
+    broadcastExtractionStatus();
+  }
 
   /** Extract a clean filename from the Drive UI or <title>. */
   function getFilename() {
@@ -206,30 +235,64 @@
   // ── Core Logic ──────────────────────────────────────────────
 
   async function startExtraction() {
-    if (isRunning) return;
+    if (isRunning) {
+      updateExtractionStatus({
+        state: "running",
+        message: "Extraction already running",
+      });
+      return;
+    }
     isRunning = true;
+    updateExtractionStatus({
+      state: "running",
+      message: "Starting extraction",
+      detail: "Preparing document scan",
+      progress: 2,
+      pagesFound: 0,
+    });
 
     const btn = document.getElementById("drive-pdf-extractor-btn");
-    btn.style.pointerEvents = "none";
-    btn.style.opacity = "0.5";
+    if (btn) {
+      btn.style.pointerEvents = "none";
+      btn.style.opacity = "0.5";
+    }
 
     const ui = createOverlay();
 
     try {
       // 1. Auto‑scroll to load all lazy pages ─────────────────
       ui.setStatus("Scrolling to load all pages…");
+      updateExtractionStatus({
+        state: "running",
+        message: "Scanning pages",
+        detail: "Auto-scrolling to trigger lazy loading",
+        progress: 10,
+      });
       await autoScroll(ui);
 
       // 2. Load jsPDF ──────────────────────────────────────────
       ui.setStatus("Loading PDF library…");
       ui.setDetail("Fetching jsPDF from CDN");
       ui.setProgress(50);
+      updateExtractionStatus({
+        state: "running",
+        message: "Preparing PDF generator",
+        detail: "Loading jsPDF",
+        progress: 50,
+      });
       await loadJsPDF();
 
       // 3. Generate PDF ────────────────────────────────────────
       ui.setStatus("Generating PDF…");
       const images = collectBlobImages();
       ui.setDetail(`Found ${images.length} page(s)`);
+      updateExtractionStatus({
+        state: "running",
+        message: "Building PDF",
+        detail: `Found ${images.length} page(s)`,
+        pagesFound: images.length,
+        progress: 55,
+      });
 
       if (images.length === 0) {
         throw new Error(
@@ -255,9 +318,17 @@
         const img = images[i];
         const w = img.naturalWidth;
         const h = img.naturalHeight;
+        const progress = 50 + Math.round(((i + 1) / images.length) * 48);
 
         ui.setDetail(`Rendering page ${i + 1} / ${images.length}`);
-        ui.setProgress(50 + Math.round((i / images.length) * 48));
+        ui.setProgress(progress);
+        updateExtractionStatus({
+          state: "running",
+          message: "Building PDF",
+          detail: `Rendering page ${i + 1} / ${images.length}`,
+          pagesFound: images.length,
+          progress,
+        });
 
         // Draw to offscreen canvas
         const canvas = document.createElement("canvas");
@@ -280,21 +351,42 @@
       ui.setStatus("Saving…");
       ui.setDetail(filename + ".pdf");
       ui.setProgress(100);
+      updateExtractionStatus({
+        state: "running",
+        message: "Saving download",
+        detail: filename + ".pdf",
+        pagesFound: images.length,
+        progress: 100,
+      });
       pdf.save(filename + ".pdf");
 
       // Done
       ui.setStatus("✅ Download complete!");
       ui.setDetail(`${images.length} pages saved as "${filename}.pdf"`);
+      updateExtractionStatus({
+        state: "success",
+        message: "Download complete",
+        detail: `${images.length} pages saved as "${filename}.pdf"`,
+        pagesFound: images.length,
+        progress: 100,
+      });
       setTimeout(() => ui.remove(), 2500);
     } catch (err) {
       console.error("[Drive PDF Extractor]", err);
       ui.setStatus("❌ Error");
       ui.setDetail(err.message || String(err));
+      updateExtractionStatus({
+        state: "error",
+        message: "Extraction failed",
+        detail: err.message || String(err),
+      });
       setTimeout(() => ui.remove(), 5000);
     } finally {
       isRunning = false;
-      btn.style.pointerEvents = "";
-      btn.style.opacity = "";
+      if (btn) {
+        btn.style.pointerEvents = "";
+        btn.style.opacity = "";
+      }
     }
   }
 
@@ -321,7 +413,15 @@
 
         const currentCount = collectBlobImages().length;
         ui.setDetail(`${currentCount} page(s) detected — scrolling…`);
-        ui.setProgress(Math.min(45, Math.round((elapsed / MAX_WAIT) * 45)));
+        const progress = Math.min(45, Math.round((elapsed / MAX_WAIT) * 45));
+        ui.setProgress(progress);
+        updateExtractionStatus({
+          state: "running",
+          message: "Scanning pages",
+          detail: `${currentCount} page(s) detected - scrolling`,
+          pagesFound: currentCount,
+          progress,
+        });
 
         const atBottom =
           container.scrollTop + container.clientHeight >=
@@ -364,7 +464,34 @@
     });
   }
 
+  // ── Runtime Messaging ───────────────────────────────────────
+
+  if (chrome?.runtime?.onMessage) {
+    chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+      if (!message || typeof message !== "object") return;
+
+      if (message.type === "DRIVE_PDF_EXTRACT_START") {
+        if (!isRunning) {
+          startExtraction();
+        }
+        sendResponse({
+          ok: true,
+          status: getExtractionStatus(),
+        });
+        return;
+      }
+
+      if (message.type === "DRIVE_PDF_EXTRACT_STATUS") {
+        sendResponse({
+          ok: true,
+          status: getExtractionStatus(),
+        });
+      }
+    });
+  }
+
   // ── Init ────────────────────────────────────────────────────
   // Wait a moment for the Drive UI to settle, then inject.
   setTimeout(injectButton, 1500);
+  broadcastExtractionStatus();
 })();
