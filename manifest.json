@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "Drive PDF Extractor",
+  "version": "1.0.0",
+  "description": "Download restricted Google Drive PDF files as high-quality PDFs.",
+  "permissions": [],
+  "content_scripts": [
+    {
+      "matches": ["https://drive.google.com/file/d/*/view*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
