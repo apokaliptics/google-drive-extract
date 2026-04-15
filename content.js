@@ -6,24 +6,7 @@
 (function () {
   "use strict";
 
-  // ── Trusted Types Policy ────────────────────────────────────
-  // Google Drive enforces Trusted Types. We create a permissive
-  // policy so we can inject the jsPDF <script> tag safely.
-  if (window.trustedTypes && window.trustedTypes.createPolicy) {
-    try {
-      window.trustedTypes.createPolicy("default", {
-        createHTML: (s) => s,
-        createScript: (s) => s,
-        createScriptURL: (s) => s,
-      });
-    } catch (_) {
-      // Policy may already exist — that's fine.
-    }
-  }
-
   // ── Constants ───────────────────────────────────────────────
-  const JSPDF_CDN =
-    "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
   const SCROLL_STEP = 500; // px per tick
   const SCROLL_INTERVAL = 300; // ms between ticks
   const STABLE_WAIT = 2000; // ms to confirm no new images
@@ -272,12 +255,12 @@
 
       // 2. Load jsPDF ──────────────────────────────────────────
       ui.setStatus("Loading PDF library…");
-      ui.setDetail("Fetching jsPDF from CDN");
+      ui.setDetail("Initializing bundled jsPDF library");
       ui.setProgress(50);
       updateExtractionStatus({
         state: "running",
         message: "Preparing PDF generator",
-        detail: "Loading jsPDF",
+        detail: "Initializing bundled jsPDF",
         progress: 50,
       });
       await loadJsPDF();
@@ -447,20 +430,19 @@
     });
   }
 
-  /** Dynamically load jsPDF if not already present. */
+  /** Ensure bundled jsPDF is available in this content script context. */
   function loadJsPDF() {
     return new Promise((resolve, reject) => {
-      if (window.jspdf) {
+      if (window.jspdf?.jsPDF) {
         resolve();
         return;
       }
 
-      const script = document.createElement("script");
-      script.src = JSPDF_CDN;
-      script.onload = () => resolve();
-      script.onerror = () =>
-        reject(new Error("Failed to load jsPDF from CDN."));
-      document.head.appendChild(script);
+      reject(
+        new Error(
+          "Bundled jsPDF is not available. Reload the extension and refresh this Drive tab."
+        )
+      );
     });
   }
 

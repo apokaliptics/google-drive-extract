@@ -17,7 +17,7 @@
   "content_scripts": [
     {
       "matches": ["https://drive.google.com/file/d/*/view*"],
-      "js": ["content.js"],
+      "js": ["vendor/jspdf.umd.min.js", "content.js"],
       "run_at": "document_idle"
     }
   ],
