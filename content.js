@@ -9,8 +9,11 @@
   // ── Constants ───────────────────────────────────────────────
   const SCROLL_STEP = 500; // px per tick
   const SCROLL_INTERVAL = 300; // ms between ticks
+  const BACKGROUND_SCROLL_STEP = 1600; // larger jumps while hidden
+  const BACKGROUND_SCROLL_INTERVAL = 1000; // slower cadence while hidden
   const STABLE_WAIT = 2000; // ms to confirm no new images
-  const MAX_WAIT = 120000; // safety timeout (2 min)
+  const BACKGROUND_STABLE_WAIT = 5000; // hidden tabs need a longer settle time
+  const MAX_WAIT = 300000; // safety timeout (5 min)
 
   // ── State ───────────────────────────────────────────────────
   let isRunning = false;
@@ -120,18 +123,18 @@
       bottom: "28px",
       right: "28px",
       zIndex: "999999",
-      padding: "14px 28px",
-      border: "none",
-      borderRadius: "12px",
-      background: "linear-gradient(135deg, #4285F4, #34A853)",
-      color: "#fff",
+      padding: "13px 24px",
+      border: "1px solid #d8e2ef",
+      borderRadius: "14px",
+      background: "linear-gradient(180deg, #ffffff, #f4f8ff)",
+      color: "#1b2b44",
       fontSize: "15px",
       fontWeight: "700",
       fontFamily:
         "'Google Sans', 'Segoe UI', system-ui, -apple-system, sans-serif",
       cursor: "pointer",
       boxShadow:
-        "0 4px 20px rgba(66,133,244,.45), 0 1px 4px rgba(0,0,0,.18)",
+        "0 18px 34px -24px rgba(40,76,121,.56), 0 2px 8px rgba(23,45,74,.12)",
       transition: "all .25s cubic-bezier(.4,0,.2,1)",
       letterSpacing: ".3px",
       userSelect: "none",
@@ -143,12 +146,12 @@
     btn.addEventListener("mouseenter", () => {
       btn.style.transform = "translateY(-2px) scale(1.03)";
       btn.style.boxShadow =
-        "0 8px 30px rgba(66,133,244,.55), 0 2px 8px rgba(0,0,0,.22)";
+        "0 20px 40px -24px rgba(40,76,121,.68), 0 4px 10px rgba(23,45,74,.18)";
     });
     btn.addEventListener("mouseleave", () => {
       btn.style.transform = "translateY(0) scale(1)";
       btn.style.boxShadow =
-        "0 4px 20px rgba(66,133,244,.45), 0 1px 4px rgba(0,0,0,.18)";
+        "0 18px 34px -24px rgba(40,76,121,.56), 0 2px 8px rgba(23,45,74,.12)";
     });
 
     btn.addEventListener("click", startExtraction);
@@ -164,8 +167,8 @@
       position: "fixed",
       inset: "0",
       zIndex: "1000000",
-      background: "rgba(0,0,0,.72)",
-      backdropFilter: "blur(6px)",
+      background: "rgba(243, 248, 255, .76)",
+      backdropFilter: "blur(8px)",
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
@@ -175,33 +178,34 @@
 
     const card = document.createElement("div");
     Object.assign(card.style, {
-      background: "#1e1e2e",
+      background: "linear-gradient(180deg, #ffffff 0%, #f7faff 100%)",
       borderRadius: "20px",
       padding: "40px 48px",
       minWidth: "380px",
       maxWidth: "460px",
       textAlign: "center",
-      boxShadow: "0 24px 80px rgba(0,0,0,.5)",
-      color: "#e0e0e0",
+      border: "1px solid #dbe4f1",
+      boxShadow: "0 34px 78px -34px rgba(31, 62, 103, .5)",
+      color: "#1b2b44",
     });
 
     card.innerHTML = `
       <div style="margin-bottom:20px;">
         <svg width="48" height="48" viewBox="0 0 48 48" style="animation:spin 1.2s linear infinite;">
           <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
-          <circle cx="24" cy="24" r="20" fill="none" stroke="#4285F4" stroke-width="4"
+          <circle cx="24" cy="24" r="20" fill="none" stroke="#2f6fec" stroke-width="4"
                   stroke-dasharray="90 150" stroke-linecap="round"/>
         </svg>
       </div>
-      <div id="dpx-status" style="font-size:17px;font-weight:600;margin-bottom:8px;color:#fff;">
+      <div id="dpx-status" style="font-size:17px;font-weight:700;margin-bottom:8px;color:#12213a;">
         Preparing…
       </div>
-      <div id="dpx-detail" style="font-size:13px;color:#aaa;line-height:1.5;">
+      <div id="dpx-detail" style="font-size:13px;color:#60728b;line-height:1.5;">
         Initialising auto‑scroll
       </div>
-      <div style="margin-top:24px;width:100%;height:6px;border-radius:4px;background:#333;overflow:hidden;">
+      <div style="margin-top:24px;width:100%;height:6px;border-radius:4px;background:#e8eef8;overflow:hidden;">
         <div id="dpx-bar" style="height:100%;width:0%;border-radius:4px;
-             background:linear-gradient(90deg,#4285F4,#34A853);transition:width .4s ease;"></div>
+             background:linear-gradient(90deg,#2f6fec,#63a2ff);transition:width .4s ease;"></div>
       </div>
     `;
     overlay.appendChild(card);
@@ -375,33 +379,43 @@
 
   /** Scrolls the viewer to the bottom, waiting for lazy images. */
   function autoScroll(ui) {
-    return new Promise((resolve, reject) => {
-      const container = findScrollContainer();
+    return new Promise((resolve) => {
+      let container = findScrollContainer();
       let lastImgCount = 0;
       let stableTime = 0;
       let elapsed = 0;
 
-      const timer = setInterval(() => {
-        elapsed += SCROLL_INTERVAL;
+      const tick = () => {
+        const isHidden = document.visibilityState === "hidden";
+        const step = isHidden ? BACKGROUND_SCROLL_STEP : SCROLL_STEP;
+        const interval = isHidden ? BACKGROUND_SCROLL_INTERVAL : SCROLL_INTERVAL;
+        const settleWait = isHidden ? BACKGROUND_STABLE_WAIT : STABLE_WAIT;
+
+        elapsed += interval;
 
         // Safety timeout
         if (elapsed > MAX_WAIT) {
-          clearInterval(timer);
           resolve(); // proceed with whatever we have
           return;
         }
 
+        // Drive can swap viewer nodes, so reacquire when needed.
+        if (!container || !container.isConnected) {
+          container = findScrollContainer();
+        }
+
         // Scroll down
-        container.scrollTop += SCROLL_STEP;
+        container.scrollTop += step;
 
         const currentCount = collectBlobImages().length;
-        ui.setDetail(`${currentCount} page(s) detected — scrolling…`);
+        const modeSuffix = isHidden ? " - background" : "";
+        ui.setDetail(`${currentCount} page(s) detected - scanning${modeSuffix}`);
         const progress = Math.min(45, Math.round((elapsed / MAX_WAIT) * 45));
         ui.setProgress(progress);
         updateExtractionStatus({
           state: "running",
           message: "Scanning pages",
-          detail: `${currentCount} page(s) detected - scrolling`,
+          detail: `${currentCount} page(s) detected - scanning${modeSuffix}`,
           pagesFound: currentCount,
           progress,
         });
@@ -411,22 +425,24 @@
           container.scrollHeight - 10;
 
         if (atBottom) {
-          // We've reached the bottom; wait for stability
+          // We've reached the bottom; wait for stability.
           if (currentCount === lastImgCount) {
-            stableTime += SCROLL_INTERVAL;
+            stableTime += interval;
           } else {
             stableTime = 0;
           }
 
-          if (stableTime >= STABLE_WAIT) {
-            clearInterval(timer);
+          if (stableTime >= settleWait) {
             resolve();
             return;
           }
         }
 
         lastImgCount = currentCount;
-      }, SCROLL_INTERVAL);
+        setTimeout(tick, interval);
+      };
+
+      tick();
     });
   }
 

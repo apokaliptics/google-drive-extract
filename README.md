@@ -40,7 +40,7 @@ A high-performance Chrome Extension designed to bypass viewing restrictions on G
 > The in-page floating button is still available as a fallback entry point.
 
 > [!NOTE]
-> For large documents (100+ pages), keep the tab active to ensure maximum performance while the auto-scroll is running.
+> For large documents (100+ pages), keep the Drive tab open. You can switch to other tabs while auto-scroll continues.
 
 ---
 

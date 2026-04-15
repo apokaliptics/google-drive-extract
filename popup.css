@@ -1,12 +1,16 @@
 :root {
-  --bg: #10131a;
-  --panel: #161c26;
-  --border: #273247;
-  --text: #f4f7ff;
-  --muted: #a8b5cd;
-  --accent: #4f8cff;
-  --accent-2: #2ec27e;
-  --danger: #ff5f74;
+  --bg: #f4f8ff;
+  --panel: #ffffff;
+  --panel-soft: #f8fbff;
+  --border: #dbe5f2;
+  --text: #162339;
+  --muted: #60728b;
+  --accent: #2e69eb;
+  --accent-2: #63a2ff;
+  --danger: #d75064;
+  --success: #1f9d6f;
+  --shadow-lg: 0 26px 52px -30px rgba(28, 57, 98, 0.42);
+  --shadow-md: 0 14px 30px -24px rgba(33, 64, 105, 0.32);
 }
 
 * {
@@ -15,33 +19,61 @@
 
 body {
   margin: 0;
-  font-family: "Segoe UI", Tahoma, sans-serif;
-  background: radial-gradient(circle at top right, #1b2538 0%, var(--bg) 58%);
+  font-family: "Segoe UI Variable", "Segoe UI", Tahoma, sans-serif;
+  background:
+    radial-gradient(120% 95% at 110% -8%, #dde9ff 0%, transparent 60%),
+    linear-gradient(180deg, #f9fbff 0%, var(--bg) 100%);
   color: var(--text);
-  min-width: 340px;
+  min-width: 348px;
 }
 
 .panel {
+  position: relative;
+  margin: 10px;
   padding: 16px;
+  border-radius: 18px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.panel::before {
+  content: "";
+  position: absolute;
+  top: -82px;
+  right: -52px;
+  width: 178px;
+  height: 178px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(116, 162, 255, 0.26) 0%, rgba(116, 162, 255, 0) 72%);
+  pointer-events: none;
 }
 
 .panel-header {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 
 .logo {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid #d9e3f2;
+  background: #fff;
+  box-shadow: 0 8px 18px -12px rgba(32, 63, 103, 0.46);
 }
 
 .panel-header h1 {
   margin: 0;
   font-size: 16px;
+  font-weight: 700;
   line-height: 1.2;
+  color: #11203a;
 }
 
 .panel-header p {
@@ -51,18 +83,22 @@ body {
 }
 
 .status-card {
-  background: linear-gradient(160deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+  position: relative;
+  z-index: 1;
+  background: linear-gradient(180deg, #ffffff 0%, var(--panel-soft) 100%);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 12px;
+  border-radius: 14px;
+  padding: 13px;
+  box-shadow: var(--shadow-md);
 }
 
 .status-label {
   margin: 0;
-  font-size: 13px;
+  font-size: 11px;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: #d5def4;
+  letter-spacing: 0.09em;
+  color: #3f5880;
 }
 
 .status-detail {
@@ -77,7 +113,7 @@ body {
   width: 100%;
   height: 6px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.1);
+  background: #e6edf7;
   overflow: hidden;
 }
 
@@ -86,27 +122,36 @@ body {
   width: 0;
   border-radius: 999px;
   background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  box-shadow: 0 6px 12px -7px rgba(48, 106, 236, 0.75);
   transition: width 180ms ease;
 }
 
 .extract-btn {
   width: 100%;
+  position: relative;
+  z-index: 1;
   margin-top: 14px;
   border: none;
-  border-radius: 10px;
-  padding: 11px 12px;
+  border-radius: 12px;
+  padding: 12px 12px;
   font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.02em;
-  background: linear-gradient(135deg, var(--accent), #74a6ff);
+  background: linear-gradient(135deg, var(--accent), #4e8bff);
   color: #fff;
+  box-shadow: 0 16px 24px -20px rgba(31, 91, 214, 0.85);
   cursor: pointer;
-  transition: transform 120ms ease, filter 120ms ease, opacity 120ms ease;
+  transition:
+    transform 120ms ease,
+    filter 120ms ease,
+    opacity 120ms ease,
+    box-shadow 120ms ease;
 }
 
 .extract-btn:hover:enabled {
   transform: translateY(-1px);
-  filter: brightness(1.08);
+  filter: brightness(1.04);
+  box-shadow: 0 20px 28px -20px rgba(31, 91, 214, 0.86);
 }
 
 .extract-btn:active:enabled {
@@ -115,10 +160,13 @@ body {
 
 .extract-btn:disabled {
   cursor: not-allowed;
-  opacity: 0.55;
+  opacity: 0.62;
+  box-shadow: none;
 }
 
 .hint {
+  position: relative;
+  z-index: 1;
   margin: 10px 2px 0;
   color: var(--muted);
   font-size: 11px;
@@ -126,15 +174,15 @@ body {
 }
 
 .panel[data-state="running"] .status-label {
-  color: #cde1ff;
+  color: #2e69eb;
 }
 
 .panel[data-state="success"] .status-label {
-  color: #aef0cc;
+  color: var(--success);
 }
 
 .panel[data-state="error"] .status-label {
-  color: #ffb5bf;
+  color: var(--danger);
 }
 
 .panel[data-state="error"] .progress-fill {
